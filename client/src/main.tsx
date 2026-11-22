@@ -204,6 +204,7 @@ const displayName = (d: Design) => d.name.trim() || "이름 없는 꽃다발";
 const toggle = (ids: string[], id: string) =>
   ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
 function App() {
+  const [googleEnabled,setGoogleEnabled]=useState(false);
   const [d, setD] = useState<Design>(initial),
     [catalog, setCatalog] = useState<Item[]>(sample),
     [online, setOnline] = useState(false),
@@ -298,6 +299,12 @@ function App() {
     });
   };
   useEffect(() => {
+    api("auth/providers").then(v=>setGoogleEnabled(v.google===true)).catch(()=>{});
+    if(new URLSearchParams(location.search).get("google")==="retry"){
+      history.replaceState(null,"",location.pathname+location.hash);
+      setModal("login");
+      setMessage("Google 인증을 완료하지 못했어요. 기존 이메일로 가입했다면 이메일 로그인을 이용해주세요.");
+    }
     api("catalog")
       .then((c) => {
         setCatalog(c);
@@ -1279,6 +1286,10 @@ function App() {
             <h2>
               {modal === "register" ? "처음 오셨나요?" : "다시 만나 반가워요"}
             </h2>
+            <button type="button" className="google-login" disabled={!googleEnabled}
+              onClick={()=>location.assign("/api/auth/google")}>
+              {modal==="register"?"Google로 회원가입":"Google로 로그인"}{!googleEnabled && " · 준비 중"}
+            </button>
             {modal === "register" && (
               <label>
                 이름

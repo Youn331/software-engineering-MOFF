@@ -1235,3 +1235,5 @@ dl > div {
     margin-left: auto;
   }
 }
+
+.modal .google-login { width:100%; border:1px solid #acb69e; background:#fff; padding:12px; border-radius:8px; }
