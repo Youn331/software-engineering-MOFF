@@ -1249,6 +1249,7 @@ function App() {
       )}
       <footer>
         moff · 오래도록 피어있는 마음 <span>HANDMADE CHENILLE FLOWERS</span>
+        <a href="/privacy.html">개인정보처리방침</a>
       </footer>
       {message && (
         <div className="toast" role="status">
