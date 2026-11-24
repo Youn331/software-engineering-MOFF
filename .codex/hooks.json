@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "PostToolUse": [{
+      "matcher": "apply_patch",
+      "hooks": [{
+        "type": "command",
+        "command": "cd \"$(git rev-parse --show-toplevel)\" && npm run test:unit >&2 || exit 2"
+      }]
+    }]
+  }
+}

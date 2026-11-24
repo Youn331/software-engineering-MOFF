@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { bouquetAmount, checkCapacity } from "./bouquet-rules";
 import express from "express";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -39,8 +40,9 @@ const caps = { S: 5, M: 10, L: 18 },
   fees = { S: 0, M: 3000, L: 6000 };
 async function price(c: pg.PoolClient, d: z.infer<typeof design>) {
   const size=(await c.query("SELECT capacity,fee FROM size_options WHERE id=$1 FOR SHARE",[d.size])).rows[0];
-  if (!size || d.elements.length > size.capacity)
+  if (!size)
     throw Error("사이즈별 꽃 수를 초과했습니다.");
+  checkCapacity(d.elements.length, size.capacity);
   const ids = [d.wrapping, ...(d.ribbon?[d.ribbon]:[]), ...d.elements.map((e) => e.catalogId)];
   const { rows } = await c.query(
     "SELECT * FROM catalog WHERE id=ANY($1) ORDER BY id FOR UPDATE",
@@ -57,7 +59,7 @@ async function price(c: pg.PoolClient, d: z.infer<typeof design>) {
   for (const [id, n] of Object.entries(stock))
     if (by.get(id).stock < n) throw Error("재료 재고가 부족합니다.");
   return {
-    amount: size.fee + ids.reduce((n, id) => n + by.get(id).price, 0),
+    amount: bouquetAmount(size.fee, ids.map((id) => by.get(id).price)),
     stock,
   };
 }

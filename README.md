@@ -16,3 +16,11 @@ Google 로그인은 GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI(
 API 요청 목록은 API.md를 참고하세요. GET /api/catalog는 품절 여부와 태그를 반환하고 정확한 재고 수량은 관리자 전용입니다. POST /api/designs/quote는 디자인 객체를 받아 amount를 반환합니다. 세션 쿠키를 공유하는 같은 출처에서 로그인 후 요청하세요. API 실패는 error 필드로 전달합니다.
 
 자동 검증은 GitHub Actions의 일회용 DB에서 수행합니다. 로컬 통합 검증도 별도 테스트 DB에서 실행하세요. npm test는 재고 제약을, node --import tsx server/flow-smoke.ts는 실제 HTTP 주문과 DB 반영을 확인합니다.
+
+## 변경부터 운영 배포까지
+
+1. Codex에서 이 저장소를 프로젝트로 열고 프로젝트 훅을 신뢰하면 apply_patch 편집 후 유닛 테스트를 실행합니다. VS Code에서 직접 편집할 때는 npm run test:unit으로 확인합니다.
+2. 새 클론에서는 git config core.hooksPath .githooks로 푸시 전 검사를 연결합니다. 기능 브랜치에서 수정 후 PR을 엽니다.
+3. GitHub Actions의 verify는 빌드, 유닛 테스트, 임시 PostgreSQL에서 DB 및 API 회귀 테스트를 실행합니다. GitHub의 main 브랜치 규칙에서 PR과 verify 통과를 필수로 지정합니다. 별도 승인 담당자가 있을 때 사람 승인 1명을 설정합니다.
+4. Render의 moff-backend 설정에서 Deploy Hook을 복사해 GitHub Actions 저장소 비밀값 RENDER_DEPLOY_HOOK에 저장한 뒤 Render의 Auto-Deploy를 Off로 설정합니다. 배포는 main의 verify 성공 후 Actions가 담당합니다. 비밀값을 코드에 저장하지 않습니다.
+5. deploy는 검사한 커밋을 지정해 배포하고 운영 /health의 커밋 번호와 DB 상태, 홈페이지 응답을 확인합니다. 문제가 발생하면 Render 배포 이력에서 직전 성공 배포로 Rollback하고 원인 수정 후 다시 PR을 엽니다. DB 변경은 별도 복구가 필요합니다.

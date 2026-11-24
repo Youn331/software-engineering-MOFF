@@ -54,7 +54,7 @@ app.use("/api", (req, res, next) => {
   }
   next();
 });
-app.get("/health",async (_req,res)=>{try{await pool.query("SELECT 1");res.json({ok:true});}catch{res.status(503).json({ok:false});}});
+app.get("/health",async (_req,res)=>{try{await pool.query("SELECT 1");res.json({ok:true, revision:process.env.RENDER_GIT_COMMIT});}catch{res.status(503).json({ok:false});}});
 app.use(google,service);
 app.use(section0);
 app.use(section1);
