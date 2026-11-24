@@ -1,7 +1,10 @@
 name: MOFF verification
 on: [push, pull_request]
+permissions:
+  contents: read
 jobs:
   verify:
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -22,8 +25,42 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --include=dev
-      - run: npm run build && npm run db:migrate && npm test
-      - run: |
+      - name: Build and type-check
+        run: npm run build
+      - name: Prepare isolated database
+        run: npm run db:migrate
+      - name: Unit and database regression tests
+        run: npm test
+      - name: API regression tests
+        run: |
           npm start > /tmp/moff-ci.log 2>&1 &
           curl --retry 15 --retry-connrefused --retry-delay 1 -fsS http://localhost:3001/health
           node --import tsx server/flow-smoke.ts
+  deploy:
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: moff-production
+      cancel-in-progress: true
+    steps:
+      - name: Deploy verified commit to Render
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          test -n "$RENDER_DEPLOY_HOOK" || { echo "::error::Configure RENDER_DEPLOY_HOOK for moff-backend"; exit 1; }
+          curl --fail --silent --show-error --output /dev/null --max-time 30 \
+            --get --data-urlencode "ref=$GITHUB_SHA" "$RENDER_DEPLOY_HOOK"
+      - name: Confirm deployed revision, database health and storefront
+        run: |
+          site=https://moff-backend.onrender.com
+          for attempt in {1..50}; do
+            if curl -fsS --max-time 10 "$site/health" | jq -e --arg sha "$GITHUB_SHA" '.ok == true and .revision == $sha' >/dev/null; then
+              curl -fsS --max-time 15 "$site/" | grep -q 'id="root"'
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::The tested revision did not become healthy"
+          exit 1
