@@ -90,7 +90,16 @@ try {
   assert.ok(!(await other('inquiries')).some((i:any)=>i.id===inquiry.id));
   await pool.query('DELETE FROM inquiries WHERE id=$1',[inquiry.id]);
   const times=[];
-  for(let n=0;n<20;n++){const start=performance.now();const quote=await req('designs/quote','POST',draft);assert.equal(quote.amount,6000);times.push(performance.now()-start);}
+  for (const [size, count] of [["S", 2], ["M", 1], ["M", 7], ["L", 6], ["L", 13]] as const) {
+    const elements = Array.from({ length: count }, () => ({ ...draft.elements[0], id: randomUUID() }));
+    await req("designs", "POST", { ...draft, size, elements }, 409);
+  }
+  for (const [size, count, expected] of [["S", 1, 9000], ["M", 2, 15000], ["L", 7, 34000]] as const) {
+    const elements = Array.from({ length: count }, () => ({ ...draft.elements[0], id: randomUUID() }));
+    const quote = await req("designs/quote", "POST", { ...draft, size, elements });
+    assert.equal(quote.amount, expected);
+  }
+  for(let n=0;n<20;n++){const start=performance.now();const quote=await req('designs/quote','POST',draft);assert.equal(quote.amount,9000);times.push(performance.now()-start);}
   console.log('Local quote API, 20 samples, maximum ms:', Math.ceil(Math.max(...times)));
   assert.ok(Math.max(...times)<1000);
   const before = await stock();
@@ -98,7 +107,7 @@ try {
   const body = { requestKey, cartIds: cart.map((c: any) => c.id), address };
   const order = await req("orders", "POST", body);
   orderIds.push(order.id);
-  assert.equal(order.total, 15000);
+  assert.equal(order.total, 21000);
   assert.equal((await req("orders"))[0].orderItems.length, 2);
   assert.equal((await req("cart")).length, 0);
   assert.equal(
