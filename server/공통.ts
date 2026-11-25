@@ -36,13 +36,15 @@ const design = z.object({
   wrapping: z.string(),
   elements: z.array(element).min(1).max(18),
 });
-const caps = { S: 5, M: 10, L: 18 },
-  fees = { S: 0, M: 3000, L: 6000 };
-async function price(c: pg.PoolClient, d: z.infer<typeof design>) {
-  const size=(await c.query("SELECT capacity,fee FROM size_options WHERE id=$1 FOR SHARE",[d.size])).rows[0];
+export async function validateSize(c: pg.PoolClient, d: z.infer<typeof design>) {
+  const size=(await c.query("SELECT min_flowers,capacity,fee FROM size_options WHERE id=$1 FOR SHARE",[d.size])).rows[0];
   if (!size)
     throw Error("사이즈별 꽃 수를 초과했습니다.");
-  checkCapacity(d.elements.length, size.capacity);
+  checkCapacity(d.elements.length, size.capacity, size.min_flowers);
+  return size;
+}
+async function price(c: pg.PoolClient, d: z.infer<typeof design>) {
+  const size = await validateSize(c, d);
   const ids = [d.wrapping, ...(d.ribbon?[d.ribbon]:[]), ...d.elements.map((e) => e.catalogId)];
   const { rows } = await c.query(
     "SELECT * FROM catalog WHERE id=ANY($1) ORDER BY id FOR UPDATE",

@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import assets from "./assets.json";
+import { rackMaterials } from "../../shared/rack-materials";
 import "./style.css";
+import "./atelier.css";
 type Flower = {
   id: string;
   catalogId: string;
@@ -15,6 +17,7 @@ type Design = {
   name: string;
   size: "S" | "M" | "L";
   wrapping: string;
+  ribbon?: string | null;
   elements: Flower[];
 };
 type Item = {
@@ -53,16 +56,61 @@ const ids = [
 const prices = [
   3000, 3500, 3000, 2000, 1500, 3000, 4000, 4500, 4500, 3500, 3500,
 ];
-const sample = ids.map((id, i) => ({
+const sample = [...ids.map((id, i) => ({
   id,
   name: names[i],
   price: prices[i],
   available: true,
   category: id.startsWith("f_") ? "FLOWER" : "WRAPPING",
-}));
-const img = (id: string) =>
-  String((assets as Record<string, (string | number)[]>)[id]?.[0] || "");
+})), ...rackMaterials.map(item => ({ ...item, available: true }))];
+const paperNames: Record<string, string> = {
+  w_kraft: "크라프트", w_lime: "민트 그린", w_black: "블랙 도트",
+  w_cream: "아이보리 도트", w_mom: "핑크 체크", w_dad: "버건디 크림",
+  w_green_check: "연두색 체크무늬 꽃 포장지",
+};
+const sizedPapers = new Set(Object.keys(paperNames));
+const img = (id: string) => {
+  if (sizedPapers.has(id)) return `/atelier/${id}-M.webp`;
+  if (ids.includes(id) || rackMaterials.some(item => item.id === id)) return `/atelier/${id}.webp`;
+  return String((assets as Record<string, (string | number)[]>)[id]?.[0] || "");
+};
+const withPaperName = (item: Item) => ({ ...item, name: paperNames[item.id] ?? item.name });
+const paperImage = (design: Design) => sizedPapers.has(design.wrapping)
+  ? `/atelier/${design.wrapping}-${design.size}.webp`
+  : img(design.wrapping);
+// Bounds in percent of the supplied 1670 × 941 workroom photograph.
+const displaySlots: [string, number, number, number, number][] = [
+  ["w_lime", 7.1, 10.5, 5.1, 12.7], ["w_black", 17, 10.5, 4.6, 12.7],
+  ["w_mom", 12.3, 10.5, 4.6, 12.7], ["w_dad", 26.4, 10.5, 4.8, 12.7],
+  ["w_cream", 21.6, 10.5, 4.7, 12.7], ["w_kraft", 7.2, 45.4, 24.2, 15.5],
+  ["r_lavender", 7.9, 27, 5.8, 5.3], ["r_sky", 14.2, 27, 5.6, 5.3],
+  ["r_pink", 20.1, 27, 5.4, 5.3], ["r_ivory", 25.9, 27, 5.3, 5.3],
+  ["w_green_check", 7.3, 36.2, 24.1, 8.2],
+  ["f_yellow", 37.3, 5.5, 7.3, 18.3], ["f_lavender", 44.7, 5.5, 7, 18.3],
+  ["f_bell", 51.8, 5.5, 7.1, 18.3], ["f_gerbera", 59, 7.8, 7.4, 16],
+  ["f_pink", 37.3, 25.3, 7.3, 16], ["f_tulip", 44.7, 25.3, 7, 16],
+  ["f_sunflower", 51.8, 25.3, 7.1, 16], ["f_sprig", 59, 25.3, 7, 16],
+  ["f_spiral", 37.3, 43, 7.3, 16], ["f_lily", 44.7, 43, 7, 16],
+  ["f_blue_rose", 51.8, 43, 7.1, 16], ["f_willow", 59, 42, 7.1, 17],
+];
 const won = (n: number) => n.toLocaleString() + "원";
+const defaultSizes = {
+  S: { min_flowers: 1, capacity: 1, fee: 3000 },
+  M: { min_flowers: 2, capacity: 6, fee: 6000 },
+  L: { min_flowers: 7, capacity: 12, fee: 10000 },
+};
+function countLabel({ min_flowers, capacity }: typeof defaultSizes.S) {
+  return min_flowers === capacity ? `${capacity}송이` : `${min_flowers}~${capacity}송이`;
+}
+function flowerGroups(elements: Flower[]) {
+  const groups = new Map<string, Flower[]>();
+  for (const flower of elements) {
+    const group = groups.get(flower.catalogId);
+    if (group) group.push(flower);
+    else groups.set(flower.catalogId, [flower]);
+  }
+  return [...groups.entries()];
+}
 const initial = (): Design => ({
   name: "",
   size: "M",
@@ -116,6 +164,9 @@ function Bouquet({
       className={"bouquet " + (small ? "mini" : "")}
       style={{ transform: `rotateY(${angle}deg)` }}
     >
+      {sizedPapers.has(design.wrapping) && (
+        <img className={`wrapping paper-back size-${design.size}`} src={paperImage(design)} alt="" />
+      )}
       {design.elements.map((f) => (
         <img
           key={f.id}
@@ -156,10 +207,16 @@ function Bouquet({
         />
       ))}
       <img
-        className="wrapping"
-        src={img(design.wrapping)}
+        key={design.wrapping + design.size}
+        className={`wrapping size-${design.size} ${sizedPapers.has(design.wrapping) ? "paper-front " + design.wrapping : ""}`}
+        src={paperImage(design)}
         alt="선택한 포장지"
       />
+      {design.ribbon && img(design.ribbon) && (
+        <img key={design.ribbon} className={`bouquet-ribbon size-${design.size}`}
+          src={img(design.ribbon)} alt={sample.find(i => i.id === design.ribbon)?.name || "선택한 리본"}
+          draggable={false} />
+      )}
     </div>
   );
 }
@@ -204,10 +261,10 @@ const displayName = (d: Design) => d.name.trim() || "이름 없는 꽃다발";
 const toggle = (ids: string[], id: string) =>
   ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
 function App() {
+  const [sizes, setSizes] = useState(defaultSizes);
   const [googleEnabled,setGoogleEnabled]=useState(false);
   const [d, setD] = useState<Design>(initial),
-    [catalog, setCatalog] = useState<Item[]>(sample),
-    [online, setOnline] = useState(false),
+    [catalog, setCatalog] = useState<Item[]>(() => sample.map(withPaperName)),
     [user, setUser] = useState<{ name: string } | null>(null);
   const [tab, setTab] = useState("FLOWER"),
     [page, setPage] = useState("studio"),
@@ -225,27 +282,26 @@ function App() {
     [cartSelection, setCartSelection] = useState<string[]>([]),
     [checkout, setCheckout] = useState<Checkout | null>(null),
     [detail, setDetail] = useState<Order | null>(null);
+  const [materialList, showMaterialList] = useState(false);
+  const [raised, setRaised] = useState(false);
+  const [draggingItem, setDraggingItem] = useState("");
+  const liftStart = useRef(0);
   const running = useRef(false);
   const current = d.elements.find((f) => f.id === selected);
   const estimate = (design: Design) =>
     design.elements.reduce(
       (n, e) => n + (catalog.find((i) => i.id === e.catalogId)?.price || 0),
       catalog.find((i) => i.id === design.wrapping)?.price || 0,
-    ) + { S: 0, M: 3000, L: 6000 }[design.size];
+    ) + (catalog.find(i => i.id === design.ribbon)?.price || 0)
+      + sizes[design.size].fee;
   const price = estimate(d);
   const composition = (design: Design) => {
-    const counts: Record<string, number> = {};
-    design.elements.forEach(
-      (e) => (counts[e.catalogId] = (counts[e.catalogId] || 0) + 1),
-    );
     return (
-      Object.entries(counts)
-        .map(
-          ([id, n]) =>
-            `${catalog.find((i) => i.id === id)?.name || id} ${n}송이`,
-        )
+      flowerGroups(design.elements)
+        .map(([id, flowers]) => `${catalog.find(i => i.id === id)?.name || id} ${flowers.length}송이`)
         .join(" · ") +
-      ` / ${catalog.find((i) => i.id === design.wrapping)?.name || "포장지"} · ${design.size}`
+      ` / ${catalog.find((i) => i.id === design.wrapping)?.name || "포장지"} · ${design.size}` +
+      (design.ribbon ? " · " + (catalog.find(i => i.id === design.ribbon)?.name || "리본") : "")
     );
   };
   const navigate = (p: string) => {
@@ -300,6 +356,14 @@ function App() {
   };
   useEffect(() => {
     api("auth/providers").then(v=>setGoogleEnabled(v.google===true)).catch(()=>{});
+    api("sizes").then((options: (typeof defaultSizes.S & { id: string })[]) => {
+      const updated = { ...defaultSizes };
+      for (const option of options) {
+        const id = option.id;
+        if (id === "S" || id === "M" || id === "L") updated[id] = { ...defaultSizes[id], ...option };
+      }
+      setSizes(updated);
+    }).catch(() => {});
     if(new URLSearchParams(location.search).get("google")==="retry"){
       history.replaceState(null,"",location.pathname+location.hash);
       setModal("login");
@@ -307,8 +371,7 @@ function App() {
     }
     api("catalog")
       .then((c) => {
-        setCatalog(c);
-        setOnline(true);
+        setCatalog(c.map(withPaperName));
       })
       .catch(() =>
         setMessage("서버에 연결할 수 없습니다. 서버 실행 상태를 확인해주세요."),
@@ -347,13 +410,26 @@ function App() {
       ...v,
       elements: v.elements.map((f) => (f.id === selected ? { ...f, ...p } : f)),
     }));
+  const validCount = (design: Design) => {
+    const rule = sizes[design.size];
+    return design.elements.length >= rule.min_flowers && design.elements.length <= rule.capacity;
+  };
+  const selectSize = (size: Design["size"]) => {
+    if (d.elements.length > sizes[size].capacity)
+      return setMessage(`${size} 사이즈는 최대 ${sizes[size].capacity}송이예요. 꽃을 줄인 뒤 선택해주세요.`);
+    setD({ ...d, size });
+  };
   const add = (item: Item) => {
     if (!item.available) return;
+    if (item.category === "RIBBON") {
+      setD(v => ({ ...v, ribbon: item.id }));
+      return;
+    }
     if (item.category === "WRAPPING") {
       setD({ ...d, wrapping: item.id });
       return;
     }
-    if (d.elements.length >= { S: 5, M: 10, L: 18 }[d.size]) {
+    if (d.elements.length >= sizes[d.size].capacity) {
       setMessage("현재 사이즈의 최대 꽃 수에 도달했어요.");
       return;
     }
@@ -385,8 +461,9 @@ function App() {
     from: string,
     cartIds?: string[],
   ) => {
-    if (!lines.length || lines.some((l) => !l.snapshot.elements.length))
-      throw Error("꽃을 먼저 골라주세요.");
+    const invalid = lines.find(line => !validCount(line.snapshot));
+    if (invalid) return setMessage(`${invalid.snapshot.size} 사이즈는 ${countLabel(sizes[invalid.snapshot.size])}를 담아야 주문할 수 있어요.`);
+    if (!lines.length) return setMessage("주문할 꽃다발을 선택해주세요.");
     setCheckout({
       lines: structuredClone(lines),
       from,
@@ -405,7 +482,7 @@ function App() {
     <>
       <header>
         <a className="logo" onClick={() => go("studio")}>
-          moff<span>✳</span>
+          <img src="/atelier/logo.webp" alt="MOFF" />
         </a>
         <nav>
           {[
@@ -449,24 +526,23 @@ function App() {
       </header>
       {page === "studio" ? (
         <>
-          <section className="intro">
-            <div>
-              <span className="eyebrow">
-                A LITTLE FLOWER SHOP, JUST FOR YOU
-              </span>
-              <h1>
-                {editingId
-                  ? "꽃다발 디자인 수정"
-                  : "오늘은 어떤 마음을 담을까요?"}
-              </h1>
-              <p>냉장고에서 꽃을 꺼내, 당신만의 작은 꽃다발을 만들어보세요.</p>
-            </div>
-            <div className="open-sign">
-              OPEN <span>당신의 취향으로 운영 중</span>
-            </div>
-          </section>
-          <main className="shop">
-            <aside className="fridge">
+          <main className="atelier">
+            <section className="atelier-room" aria-label="모루꽃 작업대">
+              {displaySlots.map(([id, left, top, width, height]) => {
+                const item = catalog.find(i => i.id === id);
+                if (!item) return null;
+                return (
+                  <button key={id} disabled={!item.available || !door}
+                    className={"shelf-pick " + (id === d.wrapping || id === d.ribbon || current?.catalogId === id ? "picked" : "")}
+                    style={{ "--slot-left": left + "%", left: left + "%", top: top + "%", width: width + "%", height: height + "%" } as React.CSSProperties}
+                    aria-label={item.name}
+                    draggable={item.available && door}
+                    onDragStart={e => { e.dataTransfer.setData("text/plain", id); setDraggingItem(id); }}
+                    onDragEnd={() => setDraggingItem("")}
+                    onClick={() => add(item)} />
+                );
+              })}
+              {materialList && <aside className="fridge atelier-list">
               <div className="fridge-top">
                 <span>MOFF FLOWER MARKET</span>
                 <i>● 04°C</i>
@@ -475,6 +551,7 @@ function App() {
                 {[
                   ["FLOWER", "꽃 냉장고"],
                   ["WRAPPING", "포장 선반"],
+                  ["RIBBON", "리본"],
                   ["SIZE", "사이즈"],
                 ].map(([k, n]) => (
                   <button
@@ -499,17 +576,11 @@ function App() {
                       <button
                         className={d.size === s ? "active" : ""}
                         key={s}
-                        onClick={() => {
-                          if (d.elements.length > { S: 5, M: 10, L: 18 }[s])
-                            return setMessage(
-                              "꽃을 줄인 뒤 사이즈를 변경해주세요.",
-                            );
-                          setD({ ...d, size: s });
-                        }}
+                        onClick={() => selectSize(s)}
                       >
                         <b>{s}</b>
-                        <span>최대 {{ S: 5, M: 10, L: 18 }[s]}송이</span>
-                        <small>+ {won({ S: 0, M: 3000, L: 6000 }[s])}</small>
+                        <span>{countLabel(sizes[s])}</span>
+                        <small>+ {won(sizes[s].fee)}</small>
                       </button>
                     ))}
                   </div>
@@ -532,7 +603,6 @@ function App() {
                             <img src={img(item.id)} alt={item.name} />
                             {tab === "FLOWER" && <span className="vase" />}
                           </div>
-                          <b>{item.name}</b>
                           <small>
                             {item.available ? won(item.price) : "SOLD OUT"}
                           </small>
@@ -554,35 +624,26 @@ function App() {
               <div className="fridge-bottom">
                 ✳ Fresh ideas, forever flowers.
               </div>
-            </aside>
+            </aside>}
             <section
-              className="workroom"
+              aria-label="꽃다발 배치 영역"
+              className={`workroom atelier-mat ${raised ? "raised" : ""} ${draggingItem ? "receiving" : ""}`}
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => {
                 e.preventDefault();
                 const item = catalog.find(
                   (i) => i.id === e.dataTransfer.getData("text/plain"),
                 );
-                if (item) add(item);
+                setDraggingItem("");
+                if (item && door) add(item);
               }}
             >
-              <div className="awning" />
-              <div className="room-label">
-                moff flower atelier <span>✿</span>
-              </div>
-              <div className="window">
-                <i />
-                <i />
-                <i />
-                <i />
-              </div>
-              <div className="wall-shelf">
-                <span>✿</span>
-                <span>❀</span>
-                <span>✾</span>
-              </div>
-              <div className="worktop" />
-              <div className="floor" />
+              <button className="lift-handle" aria-pressed={raised}
+                onPointerDown={e => { liftStart.current = e.clientY; e.currentTarget.setPointerCapture(e.pointerId); }}
+                onPointerUp={e => { const dy = e.clientY - liftStart.current; if (Math.abs(dy) > 8) setRaised(dy < 0); }}
+                onClick={e => { if (e.detail === 0 || Math.abs(e.clientY - liftStart.current) <= 8) setRaised(!raised); }}>
+                {raised ? "꽃다발 내리기 ↓" : "꽃다발 올리기 ↑"}
+              </button>
               <div className="scene">
                 <Bouquet
                   design={d}
@@ -618,45 +679,13 @@ function App() {
               </div>
               <div className="instruction">
                 꽃을 드래그해 배치해보세요 · {d.elements.length} /{" "}
-                {{ S: 5, M: 10, L: 18 }[d.size]}송이
+                {sizes[d.size].capacity}송이
               </div>
             </section>
-            <aside className="receipt">
-              <span className="eyebrow">MADE BY YOU</span>
-              <h2>나의 꽃다발</h2>
-              <input
-                className="design-name"
-                aria-label="디자인 이름"
-                placeholder="디자인 이름을 작성하세요."
-                value={d.name}
-                maxLength={60}
-                onChange={(e) => setD({ ...d, name: e.target.value })}
-              />
-              <div className="composition">
-                {d.elements.map((f) => (
-                  <button
-                    key={f.id}
-                    className={f.id === selected ? "active" : ""}
-                    onClick={() => setSelected(f.id)}
-                  >
-                    <img src={img(f.catalogId)} />
-                    <span>
-                      {catalog.find((c) => c.id === f.catalogId)?.name}
-                    </span>
-                    <i
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setD({
-                          ...d,
-                          elements: d.elements.filter((a) => a.id !== f.id),
-                        });
-                      }}
-                    >
-                      ×
-                    </i>
-                  </button>
-                ))}
-              </div>
+            </section>
+            <div className="atelier-flower-tools">
+              <button className="material-toggle" aria-expanded={materialList}
+                onClick={() => showMaterialList(!materialList)}>재료 목록 {materialList ? "닫기" : "열기"}</button>
               {current ? (
                 <div className="edit-controls">
                   <b>선택한 꽃 조절</b>
@@ -685,19 +714,60 @@ function App() {
                       />
                     </label>
                   ))}
-                  <button
-                    onClick={() =>
-                      change({ x: 0, y: 0, rotation: 0, length: 1 })
-                    }
-                  >
-                    선택한 꽃 위치 초기화
-                  </button>
                 </div>
               ) : (
                 <p className="muted">
                   꽃을 선택하면 길이와 레이어를 조절할 수 있어요.
                 </p>
               )}
+            </div>
+            <aside className="receipt atelier-receipt">
+              <div className="receipt-details">
+              <h1>{editingId ? "꽃다발 디자인 수정" : "나의 꽃다발"}</h1>
+              <input
+                className="design-name"
+                aria-label="디자인 이름"
+                placeholder="디자인 이름을 작성하세요."
+                value={d.name}
+                maxLength={60}
+                onChange={(e) => setD({ ...d, name: e.target.value })}
+              />
+              <div className="receipt-sizes" aria-label="꽃다발 사이즈">
+                    {(["S", "M", "L"] as const).map((s) => (
+                      <button
+                        className={d.size === s ? "active" : ""}
+                        key={s}
+                        onClick={() => selectSize(s)}
+                      >
+                        <b>{s}</b>
+                        <small>{won(sizes[s].fee)}</small>
+                        <small>{countLabel(sizes[s])}</small>
+                      </button>
+                    ))}
+              </div>
+              <div className="paper-line"><span>포장지</span><img src={paperImage(d)} alt={catalog.find(i => i.id === d.wrapping)?.name} /></div>
+              <div className="composition">
+                {flowerGroups(d.elements).map(([id, flowers]) => {
+                  const name = catalog.find(item => item.id === id)?.name ?? id;
+                  const index = flowers.findIndex(f => f.id === selected);
+                  const removeId = (flowers[index] ?? flowers[flowers.length - 1]).id;
+                  return (
+                    <div className="flower-row" key={id}>
+                      <button className={index >= 0 ? "active" : ""}
+                        onClick={() => setSelected(flowers[(index + 1) % flowers.length].id)}>
+                        <img src={img(id)} alt="" /><span>{name} × {flowers.length}</span>
+                      </button>
+                      <button className="remove-flower" aria-label={name + " 한 송이 빼기"}
+                        onClick={() => setD(v => ({ ...v, elements: v.elements.filter(f => f.id !== removeId) }))}>×</button>
+                    </div>
+                  );
+                })}
+                {!validCount(d) && <p className="muted" role="status">
+                  {d.size} 사이즈는 {countLabel(sizes[d.size])}를 담아야 저장하거나 주문할 수 있어요. 현재 {d.elements.length}송이예요.
+                </p>}
+              </div>
+              </div>
+              <div className="receipt-bottom">
               <div className="total">
                 <span>꽃다발 예상 금액</span>
                 <b>{won(price)}</b>
@@ -705,7 +775,7 @@ function App() {
               <p className="shipping">3만원 이상 무료배송 · 제작 후 배송</p>
               <button
                 className="primary"
-                disabled={busy}
+                disabled={busy || !validCount(d)}
                 onClick={() =>
                   needUser(async () => {
                     if (!d.elements.length)
@@ -734,7 +804,7 @@ function App() {
                 <>
                   <div className="actions">
                     <button
-                      disabled={busy}
+                      disabled={busy || !validCount(d)}
                       onClick={() =>
                         needUser(async () => {
                           const save = window.confirm("주문 전에 My Design에도 저장할까요? 취소를 누르면 주문서로 바로 이동합니다.");
@@ -758,9 +828,7 @@ function App() {
                   </button>
                 </>
               )}
-              <small className="connection">
-                {online ? "● 서버 연결됨" : "○ 둘러보기 모드"}
-              </small>
+              </div>
             </aside>
           </main>
         </>

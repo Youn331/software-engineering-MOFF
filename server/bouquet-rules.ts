@@ -1,4 +1,5 @@
-export function checkCapacity(flowerCount: number, capacity: number) {
+export function checkCapacity(flowerCount: number, capacity: number, minimum: number) {
+  if (flowerCount < minimum) throw Error(`꽃을 최소 ${minimum}송이 담아주세요.`);
   if (flowerCount > capacity) throw Error("사이즈별 꽃 수를 초과했습니다.");
 }
 

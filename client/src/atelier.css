@@ -1,0 +1,111 @@
+.logo img { display:block; width:112px; height:44px; object-fit:contain }
+.atelier { position:relative; background:#f8e7df; color:#463d35 }
+.atelier-room {
+  position:relative; width:100%; aspect-ratio:1670 / 941;
+  background:url('/atelier/room.webp') center / 100% 100% no-repeat;
+  container-type:inline-size; isolation:isolate; overflow:clip;
+}
+.shelf-pick {
+  position:absolute; padding:0; border-radius:12px; cursor:grab;
+  transition:background .16s, box-shadow .16s, translate .16s;
+}
+.shelf-pick:is(:hover,:focus-visible,.picked) { background:#fff8db26; box-shadow:inset 0 0 0 2px #fef5c9dc }
+.shelf-pick:active { translate:0 -3px; cursor:grabbing }
+.material-toggle,.lift-handle {
+  border-radius:22px; background:#fffaf0f5; box-shadow:0 2px 8px #74433222;
+  border:1px solid #dcccbc; font-size:12px; padding:8px 14px;
+}
+.atelier-flower-tools {
+  position:absolute; left:7%; top:65%; width:min(23%,260px); z-index:12;
+  display:grid; justify-items:start; gap:6px; pointer-events:none;
+}
+.atelier-flower-tools > * { pointer-events:auto }
+.atelier-flower-tools .edit-controls {
+  width:100%; padding:10px 12px; border:1px solid #dcccbc;
+  background:#fffaf0f5; box-shadow:0 2px 8px #74433222;
+}
+.atelier-flower-tools .edit-controls label {
+  display:grid; grid-template-columns:6em minmax(0,1fr) 3em;
+  align-items:center; column-gap:6px; font-size:11px; min-height:24px; margin:0;
+}
+.atelier-flower-tools .edit-controls output { grid-column:3; grid-row:1; text-align:right }
+.atelier-flower-tools .edit-controls input { grid-column:2; grid-row:1; margin:0 }
+.atelier-flower-tools .muted { margin:0 }
+.atelier-list {
+  position:absolute; top:9px; left:8px; z-index:11; width:min(330px,95%);
+  height:62%; max-height:580px; border:1px solid #d6c9bb; background:#fffaf0;
+  box-shadow:0 12px 30px #53372540; overflow:auto;
+}
+.atelier-list .glass { min-height:100px; overflow:auto }
+.atelier-list .shelves { display:grid }
+.atelier-list .fridge-bottom { display:none }
+.atelier-mat {
+  position:absolute; left:33%; width:36%; bottom:0; height:40%;
+  min-height:0; overflow:visible; border:0; border-radius:24px; background:none;
+  transition:translate .28s ease, background .18s; z-index:5;
+}
+.atelier-mat.raised { translate:0 -16% }
+.atelier-mat.receiving { background:#fff6ef66; outline:2px dashed #b57888 }
+.atelier-mat .scene {
+  bottom:40px; height:420px; scale:clamp(.45, tan(atan2(26cqw,420px)),1);
+  transform:none; transform-origin:bottom center; pointer-events:none;
+}
+.atelier-mat .stem { pointer-events:auto }
+.atelier-mat .scene-tools { bottom:6px; padding:4px 10px }
+.atelier-mat .instruction { bottom:12px; left:-90%; width:90%; font-size:12px; color:#514137 }
+.lift-handle { position:absolute; right:0; bottom:45px; z-index:7; touch-action:none; cursor:ns-resize }
+.atelier .stem,.atelier .paper-front { animation:atelier-settle .23s ease-out }
+.atelier .stem.selected { filter:drop-shadow(0 0 3px #ffddb0) drop-shadow(2px 4px 3px #603a4329) }
+.wrapping.paper-back { z-index:-20; transform:translateX(-50%) translateZ(-110px) }
+.wrapping.paper-front { clip-path:polygon(0 28%,50% 55%,100% 28%,100% 100%,0 100%) }
+.wrapping.paper-front.w_lime { clip-path:polygon(0 40%,50% 65%,100% 40%,100% 100%,0 100%) }
+.wrapping.size-S { height:190px }
+.wrapping.size-L { height:245px }
+.bouquet-ribbon {
+  position:absolute; left:50%; top:calc(100% - 49px); width:53px;
+  transform:translate(-50%,-13%) translateZ(115px);
+  z-index:61; pointer-events:none; filter:drop-shadow(1px 2px 2px #4d303224);
+}
+.bouquet-ribbon.size-S { width:43px; top:calc(100% - 42px) }
+.bouquet-ribbon.size-L { width:63px; top:calc(100% - 57px) }
+.atelier .bouquet-ribbon { animation:atelier-settle .23s ease-out }
+@keyframes atelier-settle { from { translate:0 -5px; opacity:.8 } to { translate:0 0; opacity:1 } }
+.atelier-receipt {
+  position:absolute; right:2.3%; top:3%; width:clamp(218px,19%,340px); height:min(94%,calc(100dvh - 85px - 4vw));
+  display:grid; grid-template-rows:minmax(0,1fr) auto; padding:clamp(18px,2vw,35px) clamp(16px,1.6vw,28px);
+  background:transparent url('/atelier/receipt.webp') center / 100% 100% no-repeat;
+  border:0; box-shadow:none; filter:drop-shadow(1px 5px 6px #69534722);
+}
+.receipt-details { min-height:0; overflow-y:auto; scrollbar-width:thin }
+.receipt-bottom { display:flex; flex-direction:column }
+.atelier-receipt h1 { font:700 clamp(18px,1.6vw,25px) Georgia,serif; margin:0 0 8px }
+.receipt-sizes { display:flex; gap:5px; margin:14px 0 }
+.receipt-sizes button { flex:1; padding:6px 0; border:1px solid #d7cec4; border-radius:5px }
+.receipt-sizes .active { background:#586047; border-color:#586047; color:white }
+.receipt-sizes small { display:block; font-size:9px; margin-top:2px }
+.paper-line { display:flex; justify-content:space-between; font-size:11px; border-block:1px dashed #d1c7bd; padding:9px 0 }
+.paper-line img { width:25px; height:30px; object-fit:contain }
+.atelier-receipt .composition { display:block; max-height:none; overflow:visible; margin:7px 0 }
+.atelier-receipt .composition button { min-width:0; justify-content:space-between }
+.flower-row { display:grid; grid-template-columns:minmax(0,1fr) 32px; align-items:center }
+.atelier-receipt .flower-row .remove-flower { justify-content:center; padding:5px; font-size:18px }
+.atelier-receipt .composition img { height:25px }
+.atelier-receipt .total { border:0; border-block:1px dashed #ceb9b0; box-shadow:none; border-radius:0; background:#fff1f0; margin-top:10px }
+.atelier-receipt .total b { color:#9d425c }
+.atelier-receipt .primary { background:#94536a !important; box-shadow:none }
+@media (max-width:950px) {
+  .atelier { padding-bottom:16px }
+  .atelier-flower-tools { position:relative; inset:auto; width:min(86%,320px); margin:10px 0 0 7% }
+  .atelier-receipt { position:relative; inset:auto; width:min(94%,560px); height:clamp(340px,82dvh,700px); margin:10px auto 0; padding:22px 28px }
+  .atelier-mat .instruction { font-size:10px }
+}
+@media (max-width:600px) {
+  .atelier-room { aspect-ratio:auto; height:480px; background-size:150% 100%; background-position:left }
+  .shelf-pick { transform:scaleX(1.5); transform-origin:left; margin-left:calc(var(--slot-left) * .5) }
+  header:has(+ .atelier) nav { min-width:0; flex-wrap:wrap }
+  .atelier-mat { left:24%; width:64%; height:42% }
+  .atelier-mat .scene { scale:.49 }
+  .atelier-mat .instruction { position:absolute; left:-34%; bottom:2px; width:33%; line-height:1.45 }
+  .lift-handle,.material-toggle { font-size:10px; padding:6px 8px }
+  .atelier-list { height:60% }
+}
